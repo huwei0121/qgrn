@@ -1,0 +1,185 @@
+{
+  "schema": "quantum_paper_nine_suite_v1",
+  "created_date": "2026-10-26",
+  "status": "complete_endpoint_models",
+  "problem_count": 5,
+  "tasks": [
+    {
+      "index": 4,
+      "id": "machnes_c4_t7",
+      "label": "C4 gate, T=7",
+      "status": "selected",
+      "family": "machnes_c4",
+      "source": "machnes",
+      "paper_table_row": 13,
+      "qubits": 4,
+      "hilbert_or_logical_dimension": 16,
+      "intervals": 128,
+      "duration": 7.0,
+      "timestep": 0.0546875,
+      "solver_coordinates": 1024,
+      "default_method": "bfgs",
+      "author_algorithms": [
+        "GRAPE with full BFGS",
+        "first-order sequential Krotov-type"
+      ],
+      "mathematical_scope": "complete_published_fixed_duration_problem",
+      "selection_reason": "Short-duration member of a matched same-grid topology pair.",
+      "model_contract": "reproduction/docs/models.md",
+      "constraints": "Exact original PWC dynamics and initial state; original control domain; no added penalties or constraints",
+      "parameter_note": null
+    },
+    {
+      "index": 5,
+      "id": "machnes_c4_t12",
+      "label": "C4 gate, T=12",
+      "status": "selected",
+      "family": "machnes_c4",
+      "source": "machnes",
+      "paper_table_row": 14,
+      "qubits": 4,
+      "hilbert_or_logical_dimension": 16,
+      "intervals": 128,
+      "duration": 12.0,
+      "timestep": 0.09375,
+      "solver_coordinates": 1024,
+      "default_method": "bfgs",
+      "author_algorithms": [
+        "GRAPE with full BFGS",
+        "first-order sequential Krotov-type"
+      ],
+      "mathematical_scope": "complete_published_fixed_duration_problem",
+      "selection_reason": "Long-duration counterpart with identical target, dimension and grid.",
+      "model_contract": "reproduction/docs/models.md",
+      "constraints": "Exact original PWC dynamics and initial state; original control domain; no added penalties or constraints",
+      "parameter_note": null
+    },
+    {
+      "index": 6,
+      "id": "jandura_cz",
+      "label": "Rydberg CZ",
+      "status": "selected",
+      "family": "jandura",
+      "source": "jandura",
+      "paper_table_row": null,
+      "qubits": 2,
+      "hilbert_or_logical_dimension": 4,
+      "intervals": 99,
+      "duration": 7.612,
+      "timestep": 0.0768888888888889,
+      "solver_coordinates": 99,
+      "default_method": "bfgs",
+      "author_algorithms": [
+        "GRAPE gradient with BFGS"
+      ],
+      "mathematical_scope": "complete_published_fixed_duration_subproblem",
+      "selection_reason": "Complete average fidelity with leakage and shared local Z compensation.",
+      "model_contract": "reproduction/docs/models.md",
+      "constraints": "Exact original PWC dynamics and initial state; original control domain; no added penalties or constraints",
+      "parameter_note": null
+    },
+    {
+      "index": 7,
+      "id": "jandura_c2z",
+      "label": "Rydberg C2Z",
+      "status": "selected",
+      "family": "jandura",
+      "source": "jandura",
+      "paper_table_row": null,
+      "qubits": 3,
+      "hilbert_or_logical_dimension": 8,
+      "intervals": 399,
+      "duration": 16.43,
+      "timestep": 0.04117794486215539,
+      "solver_coordinates": 399,
+      "default_method": "bfgs",
+      "author_algorithms": [
+        "GRAPE gradient with BFGS"
+      ],
+      "mathematical_scope": "complete_published_fixed_duration_subproblem",
+      "selection_reason": "Three-qubit counterpart; printed paper parameters, not CSV reproduction.",
+      "model_contract": "reproduction/docs/models.md",
+      "constraints": "Exact original PWC dynamics and initial state; original control domain; no added penalties or constraints",
+      "parameter_note": "C2Z paper 399 intervals and rounded T16.43; public CSV is a distinct 398-interval T16.4295 dataset"
+    },
+    {
+      "index": 9,
+      "id": "heule_cnot3_alternating_t70",
+      "label": "End-controlled CNOT3",
+      "status": "selected",
+      "family": "heule",
+      "source": "heule",
+      "paper_table_row": null,
+      "qubits": 3,
+      "hilbert_or_logical_dimension": 8,
+      "intervals": 70,
+      "duration": 70.0,
+      "timestep": 1.0,
+      "solver_coordinates": 70,
+      "default_method": "bfgs",
+      "author_algorithms": [
+        "full BFGS quasi-Newton"
+      ],
+      "mathematical_scope": "complete_published_fixed_duration_problem",
+      "selection_reason": "Strict alternating local control, distinct from all-site simultaneous drives.",
+      "model_contract": "reproduction/docs/models.md",
+      "constraints": "Exact original PWC dynamics and initial state; original control domain; no added penalties or constraints",
+      "parameter_note": null
+    }
+  ],
+  "sources": {
+    "machnes": {
+      "url": "https://arxiv.org/pdf/1011.4874v3",
+      "doi": "10.1103/PhysRevA.84.022305",
+      "author_algorithms": [
+        "GRAPE with full BFGS",
+        "first-order sequential Krotov-type"
+      ],
+      "source_availability": "DYNAMO v1.2 author release; not the exact independent Table V benchmark executable",
+      "published_stopping": {
+        "grape_maxiter": 3000,
+        "krotov_maxiter": 300000,
+        "objective_target": 0.0001,
+        "function_change": 1e-08,
+        "grape_control_change": 1e-08
+      },
+      "unknown": [
+        "original random arrays and distribution beyond mean/std",
+        "all original fminunc defaults and line-search choices",
+        "exact Table V source revision"
+      ]
+    },
+    "jandura": {
+      "url": "https://arxiv.org/pdf/2202.00903v2",
+      "doi": "10.22331/q-2022-05-13-712",
+      "author_algorithms": [
+        "GRAPE gradient with BFGS"
+      ],
+      "source_availability": "Public Figshare pulse CSVs; optimizer reconstructed from the published method",
+      "published_stopping": {},
+      "unknown": [
+        "optimizer library and version",
+        "line-search and stopping options",
+        "exact original random initialization"
+      ]
+    },
+    "heule": {
+      "url": "https://arxiv.org/pdf/1007.2572v2",
+      "doi": "10.1103/PhysRevA.82.052333",
+      "author_algorithms": [
+        "full BFGS quasi-Newton"
+      ],
+      "source_availability": "Paper and Numerical Recipes citation; optimizer reconstructed from the published method",
+      "published_stopping": {},
+      "unknown": [
+        "actual implementation and version",
+        "line-search and stopping options",
+        "initial arrays and random seeds"
+      ]
+    }
+  },
+  "experiment_configuration": "reproduction/configs/selected.json",
+  "initialization_data": "reproduction/data/inputs",
+  "selection_provenance": "reproduction/data/provenance.json",
+  "description": "Five endpoint models in the nine-problem suite. The model specification defines physics and source identity; experiment configuration defines paired starts, methods, budgets and stopping rules."
+}

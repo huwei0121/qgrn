@@ -1,0 +1,161 @@
+{
+  "valid": true,
+  "displayed_runs": 200,
+  "panels": 9,
+  "algorithm_groups": 20,
+  "exact_reference_match": true,
+  "full_budget_arrays_preserved": true,
+  "unchanged_seed_selection": true,
+  "distinct_algorithm_colors": {
+    "Q-GRN": "#bd284d",
+    "BFGS": "#1f77b4",
+    "Ipopt": "#e7952a",
+    "MadNLP": "#329b75",
+    "Krotov": "#8b6bb1"
+  },
+  "zero_new_optimization_runs": true,
+  "checks": [
+    {
+      "task": "first_gate",
+      "method": "grn",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 30.0
+    },
+    {
+      "task": "first_gate",
+      "method": "author_madnlp",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 30.0
+    },
+    {
+      "task": "two_qubit_zoh",
+      "method": "grn",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 60.0
+    },
+    {
+      "task": "two_qubit_zoh",
+      "method": "author_madnlp",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 60.0
+    },
+    {
+      "task": "pico_swap13",
+      "method": "grn",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 120.0
+    },
+    {
+      "task": "pico_swap13",
+      "method": "author_ipopt_physical_loss_corrected",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 120.0
+    },
+    {
+      "task": "machnes_c4_t12",
+      "method": "grn",
+      "full_array_preserved": true,
+      "tail_shortened": true,
+      "display_end_seconds": 7.103521047216058
+    },
+    {
+      "task": "machnes_c4_t12",
+      "method": "dynamo_fminunc",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 30.0
+    },
+    {
+      "task": "machnes_c4_t12",
+      "method": "dynamo_krotov",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 30.0
+    },
+    {
+      "task": "jandura_cz",
+      "method": "grn",
+      "full_array_preserved": true,
+      "tail_shortened": true,
+      "display_end_seconds": 0.5445427180376335
+    },
+    {
+      "task": "jandura_cz",
+      "method": "fminunc_bfgs",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 2.0
+    },
+    {
+      "task": "jandura_c2z",
+      "method": "grn",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 30.0
+    },
+    {
+      "task": "jandura_c2z",
+      "method": "fminunc_bfgs",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 30.0
+    },
+    {
+      "task": "machnes_c4_t7",
+      "method": "grn",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 30.0
+    },
+    {
+      "task": "machnes_c4_t7",
+      "method": "dynamo_fminunc",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 30.0
+    },
+    {
+      "task": "machnes_c4_t7",
+      "method": "dynamo_krotov",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 30.0
+    },
+    {
+      "task": "heule_cnot3_alternating_t70",
+      "method": "grn",
+      "full_array_preserved": true,
+      "tail_shortened": true,
+      "display_end_seconds": 0.6456835951957139
+    },
+    {
+      "task": "heule_cnot3_alternating_t70",
+      "method": "fminunc_bfgs",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 5.0
+    },
+    {
+      "task": "juqbox_risk_neutral_swap02",
+      "method": "grn",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 60.0
+    },
+    {
+      "task": "juqbox_risk_neutral_swap02",
+      "method": "ipopt",
+      "full_array_preserved": true,
+      "tail_shortened": false,
+      "display_end_seconds": 60.0
+    }
+  ],
+  "plotted_values_sha256": "311e85ba0dc6bda717b72e124b458555c6ff4b1416058fc215b6d1d95b62e1e1",
+  "reference_sha256": "ee7d33d2410d4f33314847df4074c658a8a2c2b2dcce61c1068a041085042c6a"
+}

@@ -1,0 +1,17 @@
+DYNAMO v1.2 Python translation
+
+Original author: Shai Machnes, copyright 2010.
+Original release: https://www.tau.ac.il/~quantum/qlib/DYNAMO_v_1_2.zip
+Paper: Phys. Rev. A 84, 022305 (2011), arXiv:1011.4874.
+Archive SHA256: 95c3609cad7ae74151a8a1c39b48d61b83afe7cf729cf0d235013ce5640d8da2
+License: LGPL-3.0-only. DYNAMO_LICENSE.txt preserves the original license notice
+and LGPL-3.0 text. GPL-3.0.txt contains the incorporated GNU GPL version 3 text.
+
+The public numerical module preserves the author's function correspondence and
+update order while replacing MATLAB global state with an explicit Python object.
+Indices become zero based; column-major controls and masks remain unchanged.
+The full grid is unchanged. The selected mathematical abs-trace gradient corrects
+the original derivative convention explicitly. BFGS uses the independent public
+mathematical implementation in bfgs.py, not MATLAB P-code. Krotov updates retain
+the original sequential update mechanism. Graphics, audio, demo scripts, and
+workspace management are not required by these nine benchmark models.

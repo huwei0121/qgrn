@@ -1,0 +1,23 @@
+{
+  "main_figure_stem": "available_candidate_objective",
+  "report_group_stems": [
+    "available_candidate_objective_group_1",
+    "available_candidate_objective_group_2",
+    "available_candidate_objective_group_3"
+  ],
+  "artifacts": [
+    "available_candidate_objective.png",
+    "available_candidate_objective.pdf",
+    "available_candidate_objective.svg",
+    "available_candidate_objective_group_1.png",
+    "available_candidate_objective_group_1.pdf",
+    "available_candidate_objective_group_1.svg",
+    "available_candidate_objective_group_2.png",
+    "available_candidate_objective_group_2.pdf",
+    "available_candidate_objective_group_2.svg",
+    "available_candidate_objective_group_3.png",
+    "available_candidate_objective_group_3.pdf",
+    "available_candidate_objective_group_3.svg"
+  ],
+  "all_groups_reuse_identical_selected_values": true
+}

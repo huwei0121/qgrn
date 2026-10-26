@@ -1,0 +1,65 @@
+module DirectTrajOpt
+
+using Reexport
+
+# Common interface that both integrators and constraints implement
+include("common_interface.jl")
+@reexport using .CommonInterface
+
+# Packed-coordinate helpers for trajectories carrying a NamedTrajectories time warp
+# (NT#161). Included before the submodules — every consumer of the packed decision
+# vector routes through these; warp-free they return the historical values exactly.
+include("warp_plumbing.jl")
+
+include("constraints/_constraints.jl")
+using .Constraints
+# Re-export constraint types but not the interface functions (they come from CommonInterface)
+for name in names(Constraints, all = false)
+    if name ∉ [
+        :jacobian_structure,
+        :jacobian!,
+        :hessian_structure,
+        :hessian_of_lagrangian,
+        :Constraints,
+    ]
+        @eval export $name
+    end
+end
+
+include("objectives/_objectives.jl")
+@reexport using .Objectives
+
+include("integrators/_integrators.jl")
+using .Integrators
+# Re-export integrator types but not the interface functions (they come from CommonInterface)
+for name in names(Integrators, all = false)
+    if name ∉ [
+        :jacobian_structure,
+        :jacobian!,
+        :hessian_structure,
+        :hessian_of_lagrangian,
+        :Integrators,
+    ]
+        @eval export $name
+    end
+end
+
+include("problems.jl")
+@reexport using .Problems
+
+include("solvers/_solvers.jl")
+@reexport using .Solvers
+
+include("solvers/ipopt_solver/IpoptSolverExt.jl")
+@reexport using .IpoptSolverExt
+
+include("solvers/madnlp_solver/MadNLPSolverExt.jl")
+@reexport using .MadNLPSolverExt
+
+# MadNLP-default flip (#155): MadNLP is a hard dependency and the no-kwarg
+# `solve!(prob)` backend; Ipopt remains a hard dependency, fully selectable
+# via `solve!(prob; options = IpoptOptions(...))` or
+# `Solvers._set_DefaultSolverOptions(IpoptSolverExt.IpoptOptions)`.
+Solvers._set_DefaultSolverOptions(MadNLPSolverExt.MadNLPOptions)
+
+end

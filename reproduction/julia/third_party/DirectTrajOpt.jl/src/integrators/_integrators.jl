@@ -1,0 +1,270 @@
+module Integrators
+
+export AbstractIntegrator
+export test_integrator
+export get_jacobian_structure
+export get_hessian_of_lagrangian_structure
+
+using LinearAlgebra
+using SparseArrays
+using ForwardDiff
+using FiniteDiff
+using NamedTrajectories
+using TestItemRunner
+using Test
+
+# Import and extend the common interface
+using ..CommonInterface
+using ..WarpPlumbing
+import ..CommonInterface:
+    evaluate!, jacobian_structure, jacobian!, hessian_structure, hessian_of_lagrangian
+import ..CommonInterface: eval_jacobian, eval_hessian_of_lagrangian
+
+"""
+    AbstractIntegrator
+
+Abstract supertype for all dynamics integrators.
+
+Subtypes must implement the [`CommonInterface`](@ref) methods:
+- `evaluate!(δ, integrator, traj)` — compute dynamics residuals
+- `eval_jacobian(integrator, traj)` — compute sparse Jacobian
+- `eval_hessian_of_lagrangian(integrator, traj, μ)` — compute sparse Hessian of Lagrangian
+
+and must have fields `x_dim::Int` and `dim::Int`.
+"""
+abstract type AbstractIntegrator end
+
+include("derivative_integrator.jl")
+include("bilinear_integrator.jl")
+include("time_dependent_bilinear_integrator.jl")
+
+
+include("../../test/test_utils.jl")
+
+"""
+    get_jacobian_structure(integrator::AbstractIntegrator, traj::NamedTrajectory)
+
+Return the sparsity pattern of the integrator's Jacobian as a sparse matrix with
+ones at every potentially nonzero entry. Used by the solver to pre-allocate structure.
+
+Under a time warp the columns are PACKED coordinates: per-knot non-derived rows only
+(the derived timestep is never decision data) plus the trailing warp-parameter column
+the defects chain through (`Δtₖ = Δtₖ(T)`). Without a warp this is the historical
+pattern, bit-identical.
+"""
+function get_jacobian_structure(integrator::AbstractIntegrator, traj::NamedTrajectory)
+    N = traj.N
+    x_dim = integrator.x_dim
+    F_dim = integrator.dim
+    if traj.warp === nothing
+        z_dim = traj.dim
+        ∂F = spzeros(F_dim, z_dim * N + traj.global_dim)
+        for k = 1:(N-1)
+            ∂F[slice(k, x_dim), slice(k, 1:2z_dim, z_dim)] .= 1.0
+        end
+        return ∂F
+    end
+    ∂F = spzeros(F_dim, WarpPlumbing.packed_length(traj))
+    warp_cols = WarpPlumbing.warp_param_indices(traj)
+    for k = 1:(N-1)
+        cols = vcat(WarpPlumbing.packed_two_knot_window(traj, k), warp_cols)
+        ∂F[slice(k, x_dim), cols] .= 1.0
+    end
+    return ∂F
+end
+
+"""
+    get_hessian_of_lagrangian_structure(integrator::AbstractIntegrator, traj::NamedTrajectory)
+
+Return the sparsity pattern of the integrator's Hessian of the Lagrangian as a sparse
+matrix with ones at every potentially nonzero entry. Warp-aware exactly as
+[`get_jacobian_structure`](@ref) (packed two-knot windows + the warp-parameter block).
+"""
+function get_hessian_of_lagrangian_structure(::AbstractIntegrator, traj::NamedTrajectory)
+    N = traj.N
+    if traj.warp === nothing
+        z_dim = traj.dim
+        μ∂²F = spzeros(z_dim * N + traj.global_dim, z_dim * N + traj.global_dim)
+        for k = 1:(N-1)
+            μ∂²F[slice(k, 1:2z_dim, z_dim), slice(k, 1:2z_dim, z_dim)] .= 1.0
+        end
+        return μ∂²F
+    end
+    Z_dim = WarpPlumbing.packed_length(traj)
+    μ∂²F = spzeros(Z_dim, Z_dim)
+    warp_cols = WarpPlumbing.warp_param_indices(traj)
+    for k = 1:(N-1)
+        cols = vcat(WarpPlumbing.packed_two_knot_window(traj, k), warp_cols)
+        μ∂²F[cols, cols] .= 1.0
+    end
+    return μ∂²F
+end
+
+"""
+    test_integrator(
+        integrator::AbstractIntegrator,
+        traj::NamedTrajectory;
+        show_jacobian_diff=false,
+        show_hessian_diff=false,
+        test_equality=true,
+        gauss_newton=false,
+        atol=1e-5,
+        rtol=1e-5
+    )
+
+Validate an integrator's analytic Jacobian and Hessian against finite difference
+approximations. Intended for use in `@testitem` blocks.
+
+# Returns
+Tuple of `(∂f, ∂f_finite_diff, μ∂²f, μ∂²f_finite_diff)` for manual inspection.
+"""
+function test_integrator(
+    integrator::AbstractIntegrator,
+    traj::NamedTrajectory;
+    show_jacobian_diff = false,
+    show_hessian_diff = false,
+    test_equality = true,
+    gauss_newton = false,
+    atol = 1e-5,
+    rtol = 1e-5,
+)
+    println("  [test_integrator] Starting...")
+
+    # Use the provided trajectory for testing
+    test_traj = traj
+
+    # Constraint dimension - use integrator.dim directly
+    constraint_dim = integrator.dim
+
+    # Packed decision vector (warp-aware: non-derived rows, globals, warp params)
+    Z⃗_full = collect(vec(traj))
+
+    # Restore point: the original trajectory data, re-applied via unpack! after
+    # each finite-difference probe (under a warp this also re-derives the rows).
+    Z⃗_original = copy(Z⃗_full)
+
+    # Function to evaluate constraints via evaluate! - mutates traj in-place for efficiency
+    f̂ = Z⃗ -> begin
+        # single packed-write seam: warp-free [datavec; globals], warp-aware
+        # non-derived rows + warp rebuild + derived-row sync
+        unpack!(traj, Z⃗)
+        δ = zeros(eltype(Z⃗), constraint_dim)
+        evaluate!(δ, integrator, traj)
+        return δ
+    end
+
+    println("  [test_integrator] Testing evaluate!...")
+    @test !all(iszero.(f̂(Z⃗_full)))
+
+    # Restore original values
+    unpack!(traj, Z⃗_original)
+
+    # testing jacobian
+    println("  [test_integrator] Computing analytic Jacobian...")
+    ∂f = eval_jacobian(integrator, test_traj)
+
+    # Compute finite difference Jacobian
+    println("  [test_integrator] Computing finite diff Jacobian...")
+    ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, Z⃗_full)
+
+    # Restore original values after finite diff
+    unpack!(traj, Z⃗_original)
+
+    if show_jacobian_diff
+        println("\tDifference in jacobian")
+        show_diffs(∂f, ∂f_autodiff, atol = atol, rtol = rtol)
+        println()
+    end
+
+    # Always run the tests
+    println("  [test_integrator] Testing Jacobian...")
+    if test_equality
+        @test all(isapprox.(∂f, ∂f_autodiff, atol = atol, rtol = rtol))
+    else
+        if atol > 0.0
+            @test norm(∂f - ∂f_autodiff) < atol
+        else
+            @test norm(∂f - ∂f_autodiff) / norm(∂f_autodiff) < rtol
+        end
+    end
+
+    # testing hessian
+    μ = rand(constraint_dim)
+
+    println("  [test_integrator] Computing analytic Hessian...")
+    μ∂²f = eval_hessian_of_lagrangian(integrator, test_traj, μ)
+
+    # Compute finite difference Hessian
+    println("  [test_integrator] Computing finite diff Hessian...")
+    μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(Z⃗ -> μ'f̂(Z⃗), Z⃗_full)
+
+    # Restore original values after finite diff
+    unpack!(traj, Z⃗_original)
+
+    if gauss_newton
+        # Mask comparison to only GN components (state-parameter cross-terms)
+        H_structure = get_hessian_of_lagrangian_structure(integrator, test_traj)
+        mask = triu(H_structure) .!= 0
+
+        if show_hessian_diff
+            println("\tDifference in hessian (GN components only)")
+            # Show diffs only at masked positions
+            H_analytic = triu(μ∂²f)
+            H_findiff = triu(μ∂²f_autodiff)
+            for idx in findall(mask)
+                a, b = H_analytic[idx], H_findiff[idx]
+                if !isapprox(a, b; atol = atol)
+                    println((a, b), " @ ", Tuple(idx))
+                end
+            end
+            println()
+        end
+
+        println("  [test_integrator] Testing Hessian (GN components)...")
+        @test all(isapprox.(triu(μ∂²f)[mask], triu(μ∂²f_autodiff)[mask], atol = atol))
+    else
+        if show_hessian_diff
+            println("\tDifference in hessian")
+            show_diffs(μ∂²f, μ∂²f_autodiff, atol = atol, rtol = rtol)
+            println()
+        end
+
+        # Always run the tests
+        println("  [test_integrator] Testing Hessian...")
+        if test_equality
+            @test all(isapprox.(triu(μ∂²f), triu(μ∂²f_autodiff), atol = atol))
+        else
+            if atol > 0.0
+                @test norm(μ∂²f - μ∂²f_autodiff) < atol
+            else
+                @test norm(μ∂²f - μ∂²f_autodiff) / norm(μ∂²f_autodiff) < rtol
+            end
+        end
+    end
+
+    println("  [test_integrator] Done!")
+    return ∂f, ∂f_autodiff, μ∂²f, μ∂²f_autodiff
+end
+
+
+@testitem "coverage: test_integrator globals + verbose diff paths" setup = [DTOTestHelpers] begin
+    # a global-carrying trajectory exercises the global_data mutation/restore
+    # paths inside the harness's finite-differencing closures
+    G, traj = bilinear_dynamics_and_trajectory(add_global = true)
+    integ = BilinearIntegrator(G, :x, :u, traj)
+
+    # verbose printing branches (show_jacobian_diff / show_hessian_diff)
+    test_integrator(integ, traj; show_jacobian_diff = true, show_hessian_diff = true)
+
+    # and the globals-free path with both equality modes
+    G0, traj0 = bilinear_dynamics_and_trajectory()
+    integ0 = BilinearIntegrator(G0, :x, :u, traj0)
+    test_integrator(integ0, traj0; test_equality = false, atol = 1e-4)
+
+    # atol == 0 selects the relative-tolerance norm branches
+    test_integrator(integ0, traj0; test_equality = false, atol = 0.0, rtol = 1e-3)
+
+    # the gauss_newton branch (masked comparison + its verbose printing)
+    test_integrator(integ0, traj0; gauss_newton = true, show_hessian_diff = true)
+end
+end

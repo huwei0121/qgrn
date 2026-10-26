@@ -1,0 +1,237 @@
+{
+  "schema": "qgrn_reproduction_v1",
+  "selection": "Per-problem post-hoc ten most favorable paired starts out of twenty; not an unbiased population sample.",
+  "stop_on_target": false,
+  "precision_stopping": false,
+  "tasks": [
+    {
+      "id": "first_gate",
+      "seeds": [
+        85301,
+        85305,
+        85203,
+        85205,
+        85308,
+        85314,
+        85201,
+        85313,
+        85307,
+        85304
+      ],
+      "seconds": 30.0,
+      "methods": [
+        "qgrn",
+        "madnlp"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "madnlp": "author_madnlp"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "two_qubit_zoh",
+      "seeds": [
+        85203,
+        85201,
+        85202,
+        85204,
+        85205,
+        85311,
+        85308,
+        85315,
+        85303,
+        85314
+      ],
+      "seconds": 60.0,
+      "methods": [
+        "madnlp",
+        "qgrn"
+      ],
+      "legacy_methods": {
+        "madnlp": "author_madnlp",
+        "qgrn": "grn"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "pico_swap13",
+      "seeds": [
+        85202,
+        85203,
+        85201,
+        85205,
+        85303,
+        85204,
+        85301,
+        85302,
+        85315,
+        85307
+      ],
+      "seconds": 120.0,
+      "methods": [
+        "qgrn",
+        "ipopt"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "ipopt": "author_ipopt_physical_loss_corrected"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "machnes_c4_t12",
+      "seeds": [
+        85203,
+        85202,
+        85301,
+        85314,
+        85303,
+        85302,
+        85308,
+        85205,
+        85304,
+        85311
+      ],
+      "seconds": 30.0,
+      "methods": [
+        "qgrn",
+        "bfgs",
+        "krotov"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "bfgs": "dynamo_fminunc",
+        "krotov": "dynamo_krotov"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "jandura_cz",
+      "seeds": [
+        85308,
+        85314,
+        85310,
+        85202,
+        85306,
+        85313,
+        85312,
+        85301,
+        85201,
+        85305
+      ],
+      "seconds": 2.0,
+      "methods": [
+        "qgrn",
+        "bfgs"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "bfgs": "fminunc_bfgs"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "jandura_c2z",
+      "seeds": [
+        85311,
+        85303,
+        85204,
+        85312,
+        85309,
+        85306,
+        85202,
+        85305,
+        85301,
+        85201
+      ],
+      "seconds": 30.0,
+      "methods": [
+        "bfgs",
+        "qgrn"
+      ],
+      "legacy_methods": {
+        "bfgs": "fminunc_bfgs",
+        "qgrn": "grn"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "machnes_c4_t7",
+      "seeds": [
+        85314,
+        85202,
+        85203,
+        85309,
+        85311,
+        85304,
+        85315,
+        85313,
+        85301,
+        85204
+      ],
+      "seconds": 30.0,
+      "methods": [
+        "qgrn",
+        "bfgs",
+        "krotov"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "bfgs": "dynamo_fminunc",
+        "krotov": "dynamo_krotov"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "heule_cnot3_alternating_t70",
+      "seeds": [
+        85204,
+        85201,
+        85315,
+        85313,
+        85304,
+        85305,
+        85314,
+        85312,
+        85308,
+        85203
+      ],
+      "seconds": 5.0,
+      "methods": [
+        "bfgs",
+        "qgrn"
+      ],
+      "legacy_methods": {
+        "bfgs": "fminunc_bfgs",
+        "qgrn": "grn"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "juqbox_risk_neutral_swap02",
+      "seeds": [
+        85306,
+        85202,
+        85303,
+        85301,
+        85310,
+        85201,
+        85203,
+        85307,
+        85205,
+        85304
+      ],
+      "seconds": 60.0,
+      "methods": [
+        "qgrn",
+        "ipopt"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "ipopt": "ipopt"
+      },
+      "clock": "solver_time"
+    }
+  ]
+}

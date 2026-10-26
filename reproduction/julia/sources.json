@@ -1,0 +1,37 @@
+[
+  {
+    "name": "Piccolo.jl",
+    "commit": "5e8f209a4a2216a94e3cf1b755dd451ad3403d99",
+    "license_files": [
+      "third_party\\Piccolo.jl\\LICENSE"
+    ]
+  },
+  {
+    "name": "DirectTrajOpt.jl",
+    "commit": "99caf3519a13dea58d662eaa9b7c99187fa84e08",
+    "license_files": [
+      "third_party\\DirectTrajOpt.jl\\LICENSE"
+    ]
+  },
+  {
+    "name": "NamedTrajectories.jl",
+    "commit": "ef52f76326b9a3240ffa09947d2a2dba7da0e6b8",
+    "license_files": [
+      "third_party\\NamedTrajectories.jl\\LICENSE"
+    ]
+  },
+  {
+    "name": "QuantumCollocation2023.jl",
+    "commit": "d3b33912ebaf7b335f9e9a8619399cbc59ec89b2",
+    "license_files": [
+      "third_party\\QuantumCollocation2023.jl\\LICENSE"
+    ]
+  },
+  {
+    "name": "Juqbox.jl",
+    "commit": "3e6279d550afc214f5eccf99ba837cfc1d46b836",
+    "license_files": [
+      "third_party\\Juqbox.jl\\LICENSE"
+    ]
+  }
+]

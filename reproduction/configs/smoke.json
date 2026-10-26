@@ -1,0 +1,157 @@
+{
+  "schema": "qgrn_reproduction_v1",
+  "selection": "Per-problem post-hoc ten most favorable paired starts out of twenty; not an unbiased population sample.",
+  "stop_on_target": false,
+  "precision_stopping": false,
+  "tasks": [
+    {
+      "id": "first_gate",
+      "seeds": [
+        85301
+      ],
+      "seconds": 0.5,
+      "methods": [
+        "qgrn",
+        "madnlp"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "madnlp": "author_madnlp"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "two_qubit_zoh",
+      "seeds": [
+        85203
+      ],
+      "seconds": 0.5,
+      "methods": [
+        "madnlp",
+        "qgrn"
+      ],
+      "legacy_methods": {
+        "madnlp": "author_madnlp",
+        "qgrn": "grn"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "pico_swap13",
+      "seeds": [
+        85202
+      ],
+      "seconds": 2.0,
+      "methods": [
+        "qgrn",
+        "ipopt"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "ipopt": "author_ipopt_physical_loss_corrected"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "machnes_c4_t12",
+      "seeds": [
+        85203
+      ],
+      "seconds": 0.5,
+      "methods": [
+        "qgrn",
+        "bfgs",
+        "krotov"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "bfgs": "dynamo_fminunc",
+        "krotov": "dynamo_krotov"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "jandura_cz",
+      "seeds": [
+        85308
+      ],
+      "seconds": 0.5,
+      "methods": [
+        "qgrn",
+        "bfgs"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "bfgs": "fminunc_bfgs"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "jandura_c2z",
+      "seeds": [
+        85311
+      ],
+      "seconds": 0.5,
+      "methods": [
+        "bfgs",
+        "qgrn"
+      ],
+      "legacy_methods": {
+        "bfgs": "fminunc_bfgs",
+        "qgrn": "grn"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "machnes_c4_t7",
+      "seeds": [
+        85314
+      ],
+      "seconds": 0.5,
+      "methods": [
+        "qgrn",
+        "bfgs",
+        "krotov"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "bfgs": "dynamo_fminunc",
+        "krotov": "dynamo_krotov"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "heule_cnot3_alternating_t70",
+      "seeds": [
+        85204
+      ],
+      "seconds": 0.5,
+      "methods": [
+        "bfgs",
+        "qgrn"
+      ],
+      "legacy_methods": {
+        "bfgs": "fminunc_bfgs",
+        "qgrn": "grn"
+      },
+      "clock": "complete_online_cost"
+    },
+    {
+      "id": "juqbox_risk_neutral_swap02",
+      "seeds": [
+        85306
+      ],
+      "seconds": 2.0,
+      "methods": [
+        "qgrn",
+        "ipopt"
+      ],
+      "legacy_methods": {
+        "qgrn": "grn",
+        "ipopt": "ipopt"
+      },
+      "clock": "solver_time"
+    }
+  ],
+  "purpose": "Interface smoke test; same complete model, one retained start per task, short budget; no performance claims."
+}

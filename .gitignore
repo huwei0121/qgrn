@@ -1,0 +1,17 @@
+external/
+.runtime/
+**/__pycache__/
+*.pyc
+results/scratch/
+
+.venv/
+/build/
+/dist/
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+outputs/
+reproduction/outputs/
+reproduction/validation/
+reproduction/data/raw/
+.venvs/

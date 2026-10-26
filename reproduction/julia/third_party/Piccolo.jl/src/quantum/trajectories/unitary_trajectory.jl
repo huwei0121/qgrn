@@ -1,0 +1,418 @@
+# ============================================================================ #
+# UnitaryTrajectory
+# ============================================================================ #
+
+"""
+    UnitaryTrajectory{P<:AbstractPulse, S<:ODESolution} <: AbstractQuantumTrajectory{P}
+
+Trajectory for unitary gate synthesis. The ODE solution is computed at construction.
+
+# Fields
+- `system::AbstractQuantumSystem`: The quantum system
+- `pulse::P`: The control pulse (stores drive_name)
+- `initial::Matrix{ComplexF64}`: Initial unitary (default: identity)
+- `goal::AbstractPiccoloOperator`: Target unitary operator (Matrix{ComplexF64} or EmbeddedOperator)
+- `solution::S`: Pre-computed ODE solution
+
+# Callable
+`traj(t)` returns the unitary at time `t` by interpolating the solution.
+
+# Conversion to NamedTrajectory
+Use `NamedTrajectory(traj, N)` or `NamedTrajectory(traj, times)` for optimization.
+"""
+mutable struct UnitaryTrajectory{P<:AbstractPulse,S<:ODESolution} <:
+               AbstractQuantumTrajectory{P}
+    system::AbstractQuantumSystem
+    pulse::P
+    initial::Matrix{ComplexF64}
+    goal::AbstractPiccoloOperator
+    solution::S
+end
+
+"""
+    UnitaryTrajectory(system, pulse, goal; initial=I, algorithm=MagnusAdapt4(), abstol=1e-8, reltol=1e-8, n_save=101)
+
+Create a unitary trajectory by solving the Schrödinger equation.
+
+# Arguments
+- `system::QuantumSystem`: The quantum system
+- `pulse::AbstractPulse`: The control pulse
+- `goal::AbstractPiccoloOperator`: Target unitary (Matrix or EmbeddedOperator).
+  Non-ComplexF64 matrices are automatically converted to `Matrix{ComplexF64}`.
+
+# Keyword Arguments
+- `initial`: Initial unitary (default: identity matrix)
+- `algorithm`: ODE solver algorithm (default: MagnusAdapt4())
+- `abstol`: Absolute tolerance for adaptive integration (default: 1e-8)
+- `reltol`: Relative tolerance for adaptive integration (default: 1e-8)
+- `n_save`: Number of output time points for plotting/interpolation (default: 101)
+"""
+function UnitaryTrajectory(
+    system::AbstractQuantumSystem,
+    pulse::AbstractPulse,
+    goal::AbstractPiccoloOperator;
+    initial::AbstractMatrix{<:Number} = Matrix{ComplexF64}(I, system.levels, system.levels),
+    algorithm = nothing,
+    abstol::Real = 1e-8,
+    reltol::Real = 1e-8,
+    n_save::Int = 101,
+)
+    @assert n_drives(pulse) == system.n_drives "Pulse has $(n_drives(pulse)) drives, system has $(system.n_drives)"
+
+    goal_stored =
+        goal isa Matrix{ComplexF64} || goal isa EmbeddedOperator ? goal :
+        Matrix{ComplexF64}(goal)
+
+    if isnothing(algorithm)
+        algorithm = default_algorithm(system)
+    end
+
+    U0 = Matrix{ComplexF64}(initial)
+    knot_times = get_knot_times(pulse)
+    save_times = collect(range(0.0, duration(pulse), length = n_save))
+    tstops = sort(unique(vcat(knot_times, save_times)))
+    prob = UnitaryOperatorODEProblem(system, pulse, tstops; U0 = U0)
+    sol = solve(prob, algorithm; saveat = save_times, abstol = abstol, reltol = reltol)
+
+    return UnitaryTrajectory{typeof(pulse),typeof(sol)}(system, pulse, U0, goal_stored, sol)
+end
+
+"""
+    UnitaryTrajectory(system, goal, T::Real; drive_name=:u, algorithm=MagnusAdapt4(), abstol=1e-8, reltol=1e-8)
+
+Convenience constructor that creates a random pulse of duration T
+(each drive sampled uniformly within its `drive_bounds`; pass `rng` for reproducibility).
+
+# Arguments
+- `system::QuantumSystem`: The quantum system
+- `goal::AbstractPiccoloOperator`: Target unitary (Matrix or EmbeddedOperator)
+- `T::Real`: Duration of the pulse
+
+# Keyword Arguments
+- `drive_name::Symbol`: Name of the drive variable (default: `:u`)
+- `algorithm`: ODE solver algorithm (default: MagnusAdapt4())
+- `abstol`: Absolute tolerance (default: 1e-8)
+- `reltol`: Relative tolerance (default: 1e-8)
+"""
+function UnitaryTrajectory(
+    system::QuantumSystem,
+    goal::AbstractPiccoloOperator,
+    T::Real;
+    drive_name::Symbol = :u,
+    algorithm = nothing,
+    abstol::Real = 1e-8,
+    reltol::Real = 1e-8,
+    rng::AbstractRNG = default_rng(),
+)
+    times = [0.0, T]
+    controls =
+        vcat([rand(rng, Uniform(b...), 1, length(times)) for b in system.drive_bounds]...)
+    pulse = ZeroOrderPulse(controls, times; drive_name)
+    return UnitaryTrajectory(system, pulse, goal; algorithm, abstol, reltol)
+end
+
+# Callable: sample solution at any time
+(qtraj::UnitaryTrajectory)(t::Real) = qtraj.solution(t)
+
+# ============================================================================ #
+# Tests
+# ============================================================================ #
+
+@testitem "UnitaryTrajectory construction" begin
+    using LinearAlgebra
+
+    # Simple 2-level system
+    system = QuantumSystem(PAULIS.Z, [PAULIS.X], [1.0])
+
+    # Create with duration
+    T = 1.0
+    X_gate = ComplexF64[0 1; 1 0]
+    qtraj = UnitaryTrajectory(system, X_gate, T)
+
+    @test qtraj isa UnitaryTrajectory
+    @test qtraj.system === system
+    @test qtraj.goal === X_gate
+    @test qtraj.initial ≈ Matrix{ComplexF64}(I, 2, 2)
+
+    # Create with explicit pulse
+    times = [0.0, 0.5, 1.0]
+    controls = 0.1 * randn(1, 3)
+    pulse = ZeroOrderPulse(controls, times)
+    qtraj2 = UnitaryTrajectory(system, pulse, X_gate)
+
+    @test qtraj2 isa UnitaryTrajectory
+    @test duration(qtraj2) ≈ 1.0
+end
+
+@testitem "UnitaryTrajectory goal type conversion" begin
+    using LinearAlgebra
+
+    system = QuantumSystem(PAULIS.Z, [PAULIS.X], [1.0])
+    T = 1.0
+
+    # ComplexF64 matrix goal: identity preserved (no conversion needed)
+    goal_cf64 = ComplexF64[0 1; 1 0]
+    qtraj_cf64 = UnitaryTrajectory(system, goal_cf64, T)
+    @test qtraj_cf64.goal === goal_cf64
+    @test qtraj_cf64.goal isa Matrix{ComplexF64}
+
+    # Float64 matrix goal: converted to ComplexF64
+    goal_f64 = [0.0 1.0; 1.0 0.0]
+    qtraj_f64 = UnitaryTrajectory(system, goal_f64, T)
+    @test qtraj_f64.goal == goal_f64
+    @test qtraj_f64.goal isa Matrix{ComplexF64}
+
+    # Int matrix goal: converted to ComplexF64
+    goal_int = [0 1; 1 0]
+    qtraj_int = UnitaryTrajectory(system, goal_int, T)
+    @test qtraj_int.goal == goal_int
+    @test qtraj_int.goal isa Matrix{ComplexF64}
+
+    # EmbeddedOperator goal: identity preserved
+    H_drift = diagm(ComplexF64[1.0, 0.0, -1.0])
+    H_drive = zeros(ComplexF64, 3, 3)
+    H_drive[1, 2] = H_drive[2, 1] = 1.0
+    sys3 = QuantumSystem(H_drift, [H_drive], [1.0])
+    goal_embed = EmbeddedOperator(:X, [1, 2], 3)
+    qtraj_embed = UnitaryTrajectory(sys3, goal_embed, T)
+    @test qtraj_embed.goal === goal_embed
+
+    # Pulse-based constructor: same conversion behavior
+    times = [0.0, 0.5, 1.0]
+    controls = 0.1 * randn(1, 3)
+    pulse = ZeroOrderPulse(controls, times)
+
+    qtraj_pulse_cf64 = UnitaryTrajectory(system, pulse, goal_cf64)
+    @test qtraj_pulse_cf64.goal === goal_cf64
+
+    qtraj_pulse_f64 = UnitaryTrajectory(system, pulse, goal_f64)
+    @test qtraj_pulse_f64.goal == goal_f64
+    @test qtraj_pulse_f64.goal isa Matrix{ComplexF64}
+end
+
+@testitem "UnitaryTrajectory callable" begin
+    using LinearAlgebra
+
+    system = QuantumSystem([PAULIS.X], [1.0])
+
+    T = 1.0
+    X_gate = ComplexF64[0 1; 1 0]
+    qtraj = UnitaryTrajectory(system, X_gate, T)
+
+    # Test at initial time
+    U0 = qtraj(0.0)
+    @test U0 ≈ Matrix{ComplexF64}(I, 2, 2)
+
+    # Test at intermediate time
+    U_mid = qtraj(0.5)
+    @test U_mid isa Matrix{ComplexF64}
+    @test size(U_mid) == (2, 2)
+
+    # Test at final time
+    U_final = qtraj(T)
+    @test U_final isa Matrix{ComplexF64}
+end
+
+@testitem "UnitaryTrajectory fidelity" begin
+    using LinearAlgebra
+
+    # System that naturally implements X gate
+    σx = ComplexF64[0 1; 1 0]
+    system = QuantumSystem([σx], [1.0])
+
+    # Create pulse that implements X gate: exp(-i π/2 σx) = -i σx
+    T = π / 2
+    times = [0.0, T]
+    controls = ones(1, 2)  # Constant amplitude 1
+    pulse = ZeroOrderPulse(controls, times)
+
+    X_gate = ComplexF64[0 1; 1 0]
+    qtraj = UnitaryTrajectory(system, pulse, X_gate)
+
+    # Fidelity should be high
+    fid = fidelity(qtraj)
+    @test fid > 0.99
+end
+
+@testitem "UnitaryTrajectory with EmbeddedOperator goal" begin
+    using LinearAlgebra
+
+    # 3-level system with embedded 2-level gate
+    H_drift = diagm(ComplexF64[1.0, 0.0, -1.0])
+    H_drive = zeros(ComplexF64, 3, 3)
+    H_drive[1, 2] = H_drive[2, 1] = 1.0
+    system = QuantumSystem(H_drift, [H_drive], [1.0])
+
+    # Embedded X gate on levels 1,2
+    X_embedded = EmbeddedOperator(:X, [1, 2], 3)
+
+    T = 1.0
+    qtraj = UnitaryTrajectory(system, X_embedded, T)
+
+    @test qtraj.goal === X_embedded
+    @test qtraj.goal isa EmbeddedOperator
+
+    # Fidelity with subspace
+    fid = fidelity(qtraj; subspace = [1, 2])
+    @test fid isa Real
+end
+
+@testitem "Adaptive vs fixed-step fidelity convergence" begin
+    using LinearAlgebra
+    using OrdinaryDiffEqLinear: MagnusGL4, MagnusAdapt4
+
+    # Strong-driving system where 101 fixed steps may be inaccurate
+    ω = 520.0
+    sys = QuantumSystem(ω * PAULIS.Z, [PAULIS.X], [1.0])
+
+    T = 2π / ω * 5  # 5 full rotations
+    times = [0.0, T]
+    controls = 0.5 * ones(1, 2)
+    pulse = ZeroOrderPulse(controls, times)
+    X_gate = ComplexF64[0 1; 1 0]
+
+    # Fixed-step with only 101 points — may be inaccurate
+    qtraj_fixed =
+        UnitaryTrajectory(sys, pulse, X_gate; algorithm = MagnusGL4(), n_save = 101)
+    fid_fixed = fidelity(qtraj_fixed)
+
+    # Adaptive — should be accurate
+    qtraj_adapt = UnitaryTrajectory(
+        sys,
+        pulse,
+        X_gate;
+        algorithm = MagnusAdapt4(),
+        abstol = 1e-10,
+        reltol = 1e-10,
+    )
+    fid_adapt = fidelity(qtraj_adapt)
+
+    # Reference: fixed-step with very many points
+    qtraj_ref =
+        UnitaryTrajectory(sys, pulse, X_gate; algorithm = MagnusGL4(), n_save = 10001)
+    fid_ref = fidelity(qtraj_ref)
+
+    # Adaptive should be closer to reference than fixed-101
+    # NOTE: both methods reach machine epsilon for this system, making the
+    # comparison unreliable — marked broken until a more discriminating test is designed
+    @test_broken false
+    # @test_broken abs(fid_adapt - fid_ref) < abs(fid_fixed - fid_ref)
+end
+
+@testitem "MagnusAdapt4 preserves unitarity" begin
+    using LinearAlgebra
+    using OrdinaryDiffEqLinear: MagnusAdapt4
+
+    sys = QuantumSystem(10.0 * PAULIS.Z, [PAULIS.X, PAULIS.Y], [1.0, 1.0])
+    T = 1.0
+    pulse = ZeroOrderPulse(randn(2, 5), range(0, T, length = 5))
+    X_gate = ComplexF64[0 1; 1 0]
+
+    qtraj = UnitaryTrajectory(
+        sys,
+        pulse,
+        X_gate;
+        algorithm = MagnusAdapt4(),
+        abstol = 1e-10,
+        reltol = 1e-10,
+    )
+
+    for U in qtraj.solution.u
+        @test U' * U ≈ I atol = 1e-8
+        @test U * U' ≈ I atol = 1e-8
+    end
+end
+
+@testitem "Fidelity matches analytical result for X gate (MagnusAdapt4)" begin
+    using LinearAlgebra
+    using OrdinaryDiffEqLinear: MagnusAdapt4
+
+    # Exact X gate: exp(-i π/2 σx) = -iσx, fidelity with X should be 1.0
+    sys = QuantumSystem([PAULIS.X], [1.0])
+    T = π / 2
+    pulse = ZeroOrderPulse(ones(1, 2), [0.0, T])
+    X_gate = ComplexF64[0 1; 1 0]
+
+    qtraj = UnitaryTrajectory(
+        sys,
+        pulse,
+        X_gate;
+        algorithm = MagnusAdapt4(),
+        abstol = 1e-12,
+        reltol = 1e-12,
+    )
+
+    @test fidelity(qtraj) > 1.0 - 1e-10
+end
+
+@testitem "MagnusAdapt4 converges onto the GL4(fine) propagator (discriminating, #172)" begin
+    # Resolution of #172 / PR #103: the previous consistency test compared
+    # goal-fidelities for an exact-X fixture, where BOTH integrators saturate at
+    # machine epsilon — nothing could be discriminated. The invalid assumption
+    # was that goal-fidelity is a sensitive convergence metric AND that a finer
+    # grid means a more accurate fixed-step Magnus solve. Neither holds: with a
+    # generic propagator (non-commuting drift + random PWC pulse) and relative
+    # propagator distance to a converged reference, the fixed-step GL4 turns out
+    # to be grid-exact for PWC controls, and the adaptive integrator's residual
+    # is tolerance-driven — the ordering the old test assumed is inverted.
+    using LinearAlgebra
+    using OrdinaryDiffEqLinear: MagnusGL4, MagnusAdapt4
+    using Random
+
+    Random.seed!(172)
+    sys = QuantumSystem(1.7 * PAULIS.Z, [PAULIS.X, PAULIS.Y], [1.0, 1.0])
+    T = 1.0
+    pulse = ZeroOrderPulse(randn(2, 4), range(0, T, length = 4))
+    X_gate = ComplexF64[0 1; 1 0]
+
+    # Converged reference: fixed-step GL4 on a very fine grid.
+    qtraj_ref =
+        UnitaryTrajectory(sys, pulse, X_gate; algorithm = MagnusGL4(), n_save = 10001)
+    U_ref = qtraj_ref.solution.u[end]
+
+    # Integrators under comparison (same fixture, different discretizations).
+    U_adapt = UnitaryTrajectory(
+        sys,
+        pulse,
+        X_gate;
+        algorithm = MagnusAdapt4(),
+        abstol = 1e-10,
+        reltol = 1e-10,
+    ).solution.u[end]
+    U_coarse =
+        UnitaryTrajectory(sys, pulse, X_gate; algorithm = MagnusGL4(), n_save = 11).solution.u[end]
+
+    d(U) = norm(U - U_ref) / norm(U_ref)
+
+    # Measured (seeded): d_coarse = 5.4e-13, d_adapt = 4.0e-6.
+    #
+    # 1. PWC-grid exactness: for piecewise-constant controls each sub-step sees a
+    #    constant Hamiltonian — the Magnus commutators vanish and the fixed-step
+    #    GL4 exponential is exact up to roundoff on ANY grid. Coarseness costs
+    #    nothing; `n_save` is cost, not accuracy. This is the oracle property the
+    #    dense-Magnus parity manifests (slice 3b) can exploit.
+    @test d(U_coarse) < 1e-10
+    #
+    # 2. The adaptive integrator's error is governed by its tolerance, not grid
+    #    density — and is NOT the tighter of the two here. Asserted with an
+    #    explicit margin (25×) plus the inversion itself, so a future change to
+    #    either integrator's stepping that silently breaks this picture fails
+    #    loudly instead of passing vacuously.
+    @test d(U_adapt) < 1e-4
+    @test d(U_adapt) > 100 * d(U_coarse)
+end
+
+@testitem "convenience UnitaryTrajectory ctor is rng-reproducible" begin
+    using Piccolo
+    using Random: MersenneTwister
+
+    σx = ComplexF64[0 1; 1 0]
+    σz = ComplexF64[1 0; 0 -1]
+    sys = QuantumSystem(0.1σz, [σx], [1.0])
+    goal = ComplexF64[0 1; 1 0]   # X gate
+
+    # The convenience ctor draws a RANDOM pulse; a supplied rng makes it reproducible.
+    controls(rng) = sample(get_pulse(UnitaryTrajectory(sys, goal, 1.0; rng = rng)), 8)[1]
+    @test controls(MersenneTwister(0)) == controls(MersenneTwister(0))   # same seed → identical
+    @test controls(MersenneTwister(0)) != controls(MersenneTwister(1))   # different seed → differs
+end

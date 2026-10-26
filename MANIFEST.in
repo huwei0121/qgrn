@@ -1,0 +1,21 @@
+include README.md LICENSE pyproject.toml MANIFEST.in
+include requirements-reproducibility.txt
+recursive-include src/qgrn *.py py.typed
+include docs/api.md docs/algorithm.md docs/development.md docs/installation.md docs/references.md
+include examples/qgrn_gate_control.py
+prune tests
+include tests/test_qgrn_solver.py
+include tools/check_distribution.py
+prune src/qgrn_benchmarks
+prune python
+prune packages
+prune benchmarks
+prune experiments
+prune external
+prune reports
+prune results
+prune reproduction
+prune references
+prune archive
+prune .runtime
+global-exclude __pycache__ *.py[cod]

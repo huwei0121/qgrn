@@ -1,0 +1,98 @@
+export IpoptOptions
+
+"""
+    IpoptOptions <: AbstractSolverOptions
+
+Configuration options for the Ipopt nonlinear solver. All fields map directly to
+[Ipopt options](https://coin-or.github.io/Ipopt/OPTIONS.html).
+
+Any field can also be passed directly as a keyword argument to `solve!`:
+```julia
+solve!(prob; max_iter=200, tol=1e-6, eval_hessian=false)
+```
+
+# Commonly used fields
+- `tol::Float64 = 1e-8`: Overall NLP convergence tolerance
+- `max_iter::Int = 1_000`: Maximum number of solver iterations
+- `max_cpu_time = 1_000_000.0`: Maximum CPU time in seconds
+- `constr_viol_tol::Float64 = 1e-6`: Constraint violation tolerance
+- `eval_hessian = true`: Whether to provide exact Hessians (false uses L-BFGS)
+- `linear_solver = "mumps"`: Linear solver backend (`"mumps"`, `"pardiso"`, `"ma27"`, etc.)
+- `print_level::Int = 5`: Ipopt output verbosity (0 = silent, 12 = maximum)
+
+# Example
+```julia
+# Pass as struct
+opts = IpoptOptions(max_iter=200, tol=1e-6, print_level=0)
+solve!(prob; options=opts)
+
+# Or pass fields directly as kwargs to solve!
+solve!(prob; max_iter=200, tol=1e-6, print_level=0)
+```
+"""
+Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
+    tol::Float64 = 1e-8
+    s_max::Float64 = 100.0
+    max_iter::Int = 1_000
+    max_cpu_time = 1_000_000.0
+    dual_inf_tol::Float64 = 1.0
+    constr_viol_tol::Float64 = 1.0e-6
+    compl_inf_tol::Float64 = 1.0e-3
+    acceptable_tol::Float64 = 1.0e-6
+    acceptable_iter::Int = 15
+    acceptable_dual_inf_tol::Float64 = 1.0e10
+    acceptable_constr_viol_tol::Float64 = 1.0e-2
+    acceptable_compl_inf_tol::Float64 = 1.0e-2
+    acceptable_obj_change_tol::Float64 = 1.0e-5
+    # Ipopt's default is 1e20; the previous 1e8 fired false-positive "Iterates
+    # diverging" exits on smooth-pulse NLPs whose unscaled second derivatives
+    # legitimately reach O(1e8) (e.g. ddu ≈ u_max / Δt² with Δt in ns).
+    # Until DTO-level variable scaling lands, defer to Ipopt's default.
+    diverging_iterates_tol::Float64 = 1.0e20
+    eval_hessian = true
+    hessian_approximation = eval_hessian ? "exact" : "limited-memory"
+    hsllib = nothing
+    inf_pr_output = "original"
+    linear_solver = "mumps"
+    mu_strategy = "adaptive"
+    refine = true
+    adaptive_mu_globalization = refine ? "obj-constr-filter" : "never-monotone-mode"
+    mu_target::Float64 = 1.0e-4
+    nlp_scaling_method = "gradient-based"
+    output_file = nothing
+    print_level::Int = 5
+    print_user_options = "no"
+    print_options_documentation = "no"
+    print_timing_statistics = "no"
+    print_options_mode = "text"
+    print_advanced_options = "no"
+    print_info_string = "no"
+    print_frequency_iter = 1
+    print_frequency_time = 0.0
+    recalc_y = "no"
+    recalc_y_feas_tol = 1.0e-6
+    watchdog_shortened_iter_trigger = 0
+    watchdog_trial_iter_max = 3
+
+    # Per-iteration user callback (solver-agnostic). A subtype of
+    # `DirectTrajOpt.AbstractIntermediateCallback` with signature
+    # `(cb)(primal::AbstractVector, iter::Integer) -> Bool`. The Ipopt extension
+    # wraps it at solve time so it receives the full NLP primal vector and the
+    # IPM iteration index each iteration; return `false` to stop the solver early
+    # (user-requested termination). This is the same contract the MadNLP backend
+    # honors via `MadNLPOptions.intermediate_callback`, so the same callback
+    # object runs unchanged under both backends. Left at `nothing` ⇒ no callback.
+    #
+    # Independent of and additive to the raw `callback::Union{Nothing,Function}`
+    # kwarg of `solve!` (the text-telemetry / checkpointing closure path): when
+    # both are set, every callback fires once per iteration and the solver
+    # continues iff all return `true`.
+    intermediate_callback::Any = nothing
+end
+
+@testitem "IpoptOptions: diverging_iterates_tol default matches Ipopt" begin
+    using DirectTrajOpt: IpoptSolverExt
+    # Locks in the bump from 1e8 (false-positive on smooth-pulse NLPs) to Ipopt's
+    # native default of 1e20. See hopper/dto-variable-scaling for context.
+    @test IpoptSolverExt.IpoptOptions().diverging_iterates_tol == 1.0e20
+end
